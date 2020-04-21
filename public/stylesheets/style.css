@@ -1,0 +1,244 @@
+body {
+  padding: 50px;
+  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+}
+
+a {
+  color: #00B7FF;
+}
+
+#pane {
+  float: left;
+  height: 100%;
+  width: 20%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+#map {
+  float: left;
+  height: 100%;
+  width: 50%;
+}
+
+.clear {
+  clear: both;
+}
+
+#chart-container {
+  float: left;
+  width: 50%;
+  height: 100%;
+  background: #f1f8e9;
+  position: relative;
+}
+
+#overlay {
+  position: absolute;
+  top:0px;
+  left:0px;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,.2);
+  display: none;
+}
+
+#spinner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  height:30px;
+  width:30px;
+  margin:0px auto;
+  -webkit-animation: rotation .6s infinite linear;
+  -moz-animation: rotation .6s infinite linear;
+  -o-animation: rotation .6s infinite linear;
+  animation: rotation .6s infinite linear;
+  border-left:6px solid rgba(0,174,239,.15);
+  border-right:6px solid rgba(0,174,239,.15);
+  border-bottom:6px solid rgba(0,174,239,.15);
+  border-top:6px solid rgba(0,174,239,.8);
+  border-radius:100%;
+}
+
+@-webkit-keyframes rotation {
+  from {-webkit-transform: rotate(0deg);}
+  to {-webkit-transform: rotate(359deg);}
+}
+@-moz-keyframes rotation {
+  from {-moz-transform: rotate(0deg);}
+  to {-moz-transform: rotate(359deg);}
+}
+@-o-keyframes rotation {
+  from {-o-transform: rotate(0deg);}
+  to {-o-transform: rotate(359deg);}
+}
+@keyframes rotation {
+  from {transform: rotate(0deg);}
+  to {transform: rotate(359deg);}
+}
+
+#data-option {
+  height: 10%;
+  background-color: #deebdd;
+  background-image: linear-gradient(315deg, #deebdd 0%, #bbdbbe 74%);
+  font-size: 15px;
+  position: relative;
+}
+
+#data-option .search-field {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+#data-option .search-header {
+  font-weight: bold;
+  padding: 15px;
+}
+
+#data-option .search-input {
+  margin-right: 50px;
+}
+
+#data-option select {
+  border-radius: 3px;
+  font-size: 15px;
+  height: 25px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#manual {
+  font-size: 15px;
+  position: absolute;
+  top: 11%;
+  left: 10px;
+  margin: 0;
+}
+
+#chart {
+  width: 95%;
+  height: 85%;
+  display: block;
+  margin: 0 auto;
+}
+
+#center-control-ui {
+  background-color: #fff;
+  border: 2px solid #fff;
+  border-radius: 3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  cursor: pointer;
+  margin-bottom: 22px;
+  text-align: center;
+}
+
+#center-control-text {
+  color: rgb(25,25,25);
+  font-family: Roboto,Arial,sans-serif;
+  font-size: 15px;
+  line-height: 25px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+/* Optional: Makes the sample page fill the window. */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#description {
+  font-family: Roboto;
+  font-size: 15px;
+  font-weight: 300;
+}
+
+.pac-card {
+  margin: 10px 10px 0 0;
+  border-radius: 2px 0 0 2px;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  outline: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  background-color: #fff;
+  font-family: Roboto;
+}
+
+#pac-container {
+  padding-bottom: 12px;
+  margin-right: 12px;
+}
+
+.pac-controls {
+  display: inline-block;
+  padding: 5px 11px;
+}
+
+.pac-controls label {
+  font-family: Roboto;
+  font-size: 13px;
+  font-weight: 300;
+}
+
+#pac-input {
+  border: 2px solid #fff;
+  border-radius: 3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  background-color: #fff;
+  font-family: Roboto;
+  font-size: 15px;
+  font-weight: 300;
+  margin-top: 10px;
+  margin-left: 12px;
+  margin-right: 12px;
+  padding: 0 11px 0 13px;
+  line-height: 25px;
+  text-overflow: ellipsis;
+  width: 40%;
+  position: absolute;
+}
+
+/*#pac-input {*/
+/*  float: left;*/
+/*  background-color: #fff;*/
+/*  !*font-family: Roboto;*!*/
+/*  font-size: 15px;*/
+/*  font-weight: 300;*/
+/*  !*margin-left: 12px;*!*/
+/*  !*padding: 0 11px 0 13px;*!*/
+/*  text-overflow: ellipsis;*/
+/*  !*width: 400px;*!*/
+/*  width: 90%;*/
+/*  margin: 5%;*/
+/*}*/
+
+#pac-input:focus {
+  border-color: #4d90fe;
+}
+
+#station-photo {
+  width: 100%;
+  height: 200px;
+  /*background: antiquewhite;*/
+}
+
+#station-description {
+  line-height: 200%;
+  font-size: 15px;
+}
+
+.hide {
+  display: none;
+}
+
+.right-align {
+  text-align: right;
+}
+
+#btn-plot {
+  margin: 10px;
+}

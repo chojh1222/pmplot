@@ -1,0 +1,62 @@
+doctype html
+html
+  head
+    title= 'pmplot'
+    link(rel='stylesheet', href='/stylesheets/style.css')
+    //link(rel='stylesheet', href='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.css')
+    //script(src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js')
+    //script(src='https://cdn.jsdelivr.net/npm/chartjs-plugin-colorschemes')
+    script(src="https://www.gstatic.com/charts/loader.js")
+    block style
+  body
+    //form#search-form(method='get')
+    //  span 장소검색 서비스
+    //  input#search
+    //  button#search-btn.btn 검색
+    //  ul#search-list
+    block content
+    //script.
+    //  var timer
+    //  document.querySelector('#search').addEventListener('keyup', function(e) {
+    //    var xhr = new XMLHttpRequest()
+    //    xhr.onreadystatechange = function() {
+    //      if(xhr.readyState == xhr.DONE) {
+    //        if(xhr.status == 200) {
+    //          var prediction = JSON.parse(xhr.responseText)
+    //          var ul = document.querySelector('#search-list')
+    //          ul.innerHTML = ''
+    //          prediction.forEach(function(pred) {
+    //            var li = document.createElement('li')
+    //            li.textContent = pred.terms[0].value
+    //            li.onclick = function() {
+    //              location.href = '/search/' + li.textContent
+    //            }
+    //            ul.appendChild(li)
+    //          })
+    //        }
+    //        else {
+    //          console.error(xhr.responseText)
+    //        }
+    //      }
+    //    }
+    //    var query = this.value.trim()
+    //    if(timer) {
+    //      clearTimeout(timer)
+    //    }
+    //    timer = setTimeout(function() {
+    //      if (query) {
+    //        xhr.open('GET', '/autocomplete/' + query)
+    //        xhr.send()
+    //      }
+    //    }, 200)
+    //  })
+    //  document.querySelector('#search-form').addEventListener('submit', function(e) {
+    //    e.preventDefault()
+    //    if(!this.search.value || !this.search.value.trim()) {
+    //      this.search.focus()
+    //      return false
+    //    }
+    //    var query = this.search.value.trim()
+    //    this.action = '/search/' + query
+    //    return this.submit()
+    //  })

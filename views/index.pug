@@ -1,0 +1,796 @@
+extends layout
+
+block content
+  input(id="pac-input", class="controls", type="text", placeholder="Search Box")
+  //#pane
+  //
+  //  img#station-photo(onerror="this.src='/images/noimage.png';")
+  //  h1#station-name
+  //  #station-description
+  //    strong 지도검색 결과에 따라 인근의 측정소 정보가 여기에 표시됩니다
+  //  div.right-align
+  //    button#btn-plot.hide 측정값 보기
+  #map
+  //.clear
+  #chart-container
+    #data-option
+      div.search-field
+        span.search-header 측정기간
+        select.search-input#data-term
+          option(value='DAILY') 최근24시간
+          option(value='MONTH') 최근한달
+          option(value='YEAR') 연도별 평균
+        span.search-header 측정항목
+        select.search-input#data-item
+          option(value='pm10') 미세먼지
+          option(value='pm25') 초미세먼지
+          option(value='o3') 오존
+          option(value='co') 일산화탄소
+          option(value='so2') 아황산가스
+          option(value='no2') 이산화질소
+      //div
+        span 데이터 기간
+        input#radio1(type='radio', name='term' value='DAILY' checked)
+        label(for='radio1') 최근 1일
+        input#radio2(type='radio', name='term' value='MONTH')
+        label(for='radio2') 최근 한달
+        input#radio3(type='radio', name='term' value='YEAR')
+        label(for='radio3') 연도별 평균
+      //hr
+      //div
+        span 측정항목
+        input#radio8(type='radio', name='item' value='pm10' checked)
+        label(for='radio8') PM10
+        input#radio9(type='radio', name='item' value='pm25')
+        label(for='radio9') PM2.5
+        input#radio6(type='radio', name='item' value='o3')
+        label(for='radio6') O3
+        input#radio5(type='radio', name='item' value='co')
+        label(for='radio5') CO
+        input#radio4(type='radio', name='item' value='so2')
+        label(for='radio4') SO2
+        input#radio7(type='radio', name='item' value='no2')
+        label(for='radio7') NO2
+    #chart
+    p#manual ※ 지도에서 측정소 검색후 [plot] 버튼을 누르면 데이터가 표시됩니다.
+    #overlay
+      #spinner
+  script.
+    // This example adds a search box to a map, using the Google Place Autocomplete
+    // feature. People can enter geographical searches. The search box will return a
+    // pick list containing a mix of places and predicted search terms.
+
+    // This example requires the Places library. Include the libraries=places
+    // parameter when you first load the API. For example:
+    // <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places">
+
+    google.charts.load('current', {'packages': ['corechart']});
+
+    var stationList = '#{encodeURIComponent(JSON.stringify(stations))}'
+    stationList = decodeURIComponent(stationList)
+    stationList = JSON.parse(stationList)
+    console.log(stationList)
+
+    var map
+    var measureObj = {}
+    var colorObj = {}
+    var markerObj = {}
+    var locationObj = {}
+    var infoWindowObj = {}
+    var addrObj = {}
+
+    var colorUsed = {'#3366cc': false, '#dc3912': false, '#ff9900': false, '#109618': false, '#990099': false}
+    var colorMap = {'#3366cc': 'blue', '#dc3912': 'red', '#ff9900': 'ylw', '#109618': 'grn', '#990099': 'purple'}
+
+    window.onload = function () {
+      const [data, colors] = getChartDataForGoogleChart(measureObj, colorObj)
+      displayGoogleChart(data, colors)
+    }
+    window.onresize = function() {
+      const [data, colors] = getChartDataForGoogleChart(measureObj, colorObj)
+      displayGoogleChart(data, colors)
+    }
+
+    document.querySelector('select#data-term').addEventListener('change', function () {
+      var dataTerm = this.value
+      if(dataTerm == 'YEAR') {
+        document.querySelector('select#data-item option[value=pm25]').disabled = true
+        if(document.querySelector('select#data-item').value == 'pm25')
+          document.querySelector('select#data-item').value = 'pm10'
+      }
+      else {
+        document.querySelector('select#data-item option[value=pm25]').disabled = false
+      }
+      var promises = []
+      for(let stationName in measureObj) {
+        promises.push(getMeasure(stationName, dataTerm))
+      }
+      Promise.all(promises)
+      .then(function(result) {
+        document.querySelector('#overlay').style['display'] = 'none'
+        var newMeasureObj = {}
+        var i = 0
+        for(let stationName in measureObj) {
+          newMeasureObj[stationName] = result[i++]
+        }
+        measureObj = newMeasureObj
+        const [data, colors] = getChartDataForGoogleChart(measureObj, colorObj)
+        displayGoogleChart(data, colors)
+      })
+      .catch(function(err) {
+        console.error(err)
+      })
+    })
+
+    document.querySelector('select#data-item').addEventListener('change', function () {
+      const [data, colors] = getChartDataForGoogleChart(measureObj, colorObj)
+      displayGoogleChart(data, colors)
+    })
+
+    function getAddress(station) {
+      var ret = ''
+      var suf = ['시 ', '군 ', '구 ']
+      suf.some(function(s) {
+        if(station.addr.indexOf(s) > -1) {
+          var idx = station.addr.indexOf(s)
+          ret += station.addr.substring(0, idx+2)
+          return true
+        }
+      })
+      if(ret.indexOf(station.stationName) == -1)
+        ret += station.stationName
+      // if(station.mangName)
+      //   ret += `(${station.mangName})`
+      return ret
+    }
+
+    function geocodeLatLng(location) {
+      return new Promise(function(resolve, reject) {
+        var geocoder = new google.maps.Geocoder;
+        geocoder.geocode({location}, function (results, status) {
+          if (status === 'OK') {
+            if (results[0]) {
+              var addrComp = results[0].address_components
+              var ret = ''
+              var i = addrComp.length - 1
+              for(; i >= 0; --i) {
+                if(addrComp[i].short_name.endsWith('시') || addrComp[i].short_name.endsWith('군') || addrComp[i].short_name.endsWith('구')
+                || addrComp[i].short_name.endsWith('읍') || addrComp[i].short_name.endsWith('면') || addrComp[i].short_name.endsWith('동')) {
+                  ret += addrComp[i].short_name
+                  ret += ' '
+                }
+              }
+              resolve(ret.trim())
+            } else {
+              reject('No results found');
+            }
+          } else {
+            reject('Geocoder failed due to: ' + status);
+          }
+        });
+      })
+    }
+
+    function plot(stationName) {
+      var queryitem = document.querySelector('select#data-item').value
+      var queryterm = document.querySelector('select#data-term').value
+      return getMeasure(stationName, queryterm)
+              .then(function (measure) {
+                document.querySelector('#overlay').style['display'] = 'none'
+                if (measure.length == 0) {
+                  alert('no data')
+                  return false
+                }
+                measureObj[stationName] = measure
+                console.log(measureObj)
+                for(let c in colorUsed) {
+                  if(!colorUsed[c]) {
+                    colorObj[stationName] = c
+                    colorUsed[c] = true
+                    break
+                  }
+                }
+                // const [labels, datasets] = getChartData(measureObj)
+                // displayChart(labels, datasets)
+                const [data, colors] = getChartDataForGoogleChart(measureObj, colorObj)
+                displayGoogleChart(data, colors)
+                return true
+              })
+    }
+
+    function stopPlot(stationName) {
+      delete measureObj[stationName]
+      colorUsed[colorObj[stationName]] = false
+      delete colorObj[stationName]
+      // const [labels, datasets] = getChartData(measureObj)
+      // displayChart(labels, datasets)
+      const [data, colors] = getChartDataForGoogleChart(measureObj, colorObj)
+      displayGoogleChart(data, colors)
+    }
+
+    function processMeasure(measureObj) {
+      var curitem = document.querySelector('select#data-item').value
+      var curterm = document.querySelector('select#data-term').value
+      var ret = {}
+      for(let stationName in measureObj) {
+        var measures = measureObj[stationName]
+        var data = []
+        if(curterm == 'DAILY') {
+          var itemName = curitem + 'Value'
+          for(let measure of measures) {
+            var time = measure.dataTime.trim().substring(5)
+            var value = Number(measure[itemName])
+            if(value)
+              data.push({time, value})
+          }
+        }
+        else if (curterm == 'MONTH') {
+          var cnt = {}, sum = {}
+          var itemName = curitem + 'Value'
+          for(let measure of measures) {
+            var time = measure.dataTime.trim().substring(5, 10)
+            var value = Number(measure[itemName])
+            if(value) {
+              if (time in sum) {
+                sum[time] += value
+                cnt[time] += 1
+              } else {
+                sum[time] = value
+                cnt[time] = 1
+              }
+            }
+          }
+          for(let time of Object.keys(sum)) {
+            data.push({time, value: sum[time] / cnt[time]})
+          }
+        }
+        else if (curterm == 'YEAR') {
+          var itemName = curitem + 'Avg'
+          for(let measure of measures) {
+            var time = measure.dataTime.trim()
+            var value = Number(measure[itemName])
+            if(value)
+              data.push({time, value})
+          }
+        }
+        data.sort(function(x, y) {
+          return x.time.localeCompare(y.time)
+        })
+        ret[stationName] = data
+      }
+      return ret
+    }
+
+    function getChartDataForGoogleChart(measureObj, colorObj) {
+      var pmeasureObj = processMeasure(measureObj)
+      var labels = new Set()
+      for (let stationName in pmeasureObj) {
+        var measures = pmeasureObj[stationName]
+        for (let measure of measures) {
+          labels.add(measure.time.trim())
+        }
+      }
+      labels = Array.from(labels)
+      labels.sort()
+      var ret = new google.visualization.DataTable();
+      var data = []
+      var colors = []
+      ret.addColumn('string', 'X');
+      for(let label of labels) {
+        data.push([label])
+      }
+      var stationCnt = 0
+      for (let stationName in pmeasureObj) {
+        colors.push(colorObj[stationName])
+        stationCnt += 1
+        ret.addColumn('number', addrObj[stationName]);
+        var measures = pmeasureObj[stationName]
+        var i = 0
+        for(let row of data) {
+          if(i < measures.length && row[0] == measures[i].time.trim()) {
+            var m = measures[i].value
+            row.push(m)
+            i++
+          }
+          else {
+            row.push(undefined)
+          }
+        }
+      }
+      if(document.querySelector('select#data-term').value == 'DAILY') {
+        // for(let row of data) {
+        //   row[0] = row[0].substring(6)
+        // }
+      }
+      ret.addRows(data)
+      if(stationCnt == 0) {
+        ret.addColumn('number', '');
+        colors.push('#{process.env.CHART_BACKGROUND_COLOR}')
+      }
+      return [ret, colors]
+    }
+
+    function getChartData(measureObj) {
+      var labels = new Set()
+      var datasets =[]
+      for(let stationName in measureObj) {
+        var measures = measureObj[stationName]
+        for(let measure of measures) {
+          labels.add(measure.dataTime.trim())
+        }
+      }
+      labels = Array.from(labels)
+      labels.sort()
+      for(let stationName in measureObj) {
+        var data = []
+        var measures = measureObj[stationName]
+        var i = 0
+        for(let label of labels) {
+          if(i < measures.length && measures[i].dataTime.trim() == label) {
+            var m = measures[i].pm10Value ? Number(measures[i].pm10Value) : undefined
+            data.push(m)
+            i ++
+          }
+          else {
+            data.push(undefined)
+          }
+        }
+        datasets.push({
+          label: stationName,
+          data,
+          lineTension: 0.05,
+          fill: false,
+          spanGaps: true
+        })
+      }
+      return [labels, datasets]
+    }
+
+    function displayGoogleChart(data, colors) {
+      var curitem = document.querySelector('select#data-item').value
+      var curterm = document.querySelector('select#data-term').value
+      if(curterm == 'DAILY')
+        var hAxis = '시간'
+      else if(curterm == 'MONTH')
+        var hAxis = '날짜'
+      else if (curterm == 'YEAR')
+        var hAxis = '연도'
+      if(curitem == 'pm10')
+        var vAxis = '미세먼지(PM10) 농도 (㎍/㎥)'
+      else if(curitem == 'pm25')
+        var vAxis = '초미세먼지(PM2.5) 농도 (㎍/㎥)'
+      else if (curitem == 'o3')
+        var vAxis = '오존 농도 (ppm)'
+      else if (curitem == 'co')
+        var vAxis = '일산화탄소 농도 (ppm)'
+      else if (curitem == 'so2')
+        var vAxis = '아황산가스 농도 (ppm)'
+      else if (curitem == 'no2')
+        var vAxis = '이산화질소 농도 (ppm)'
+      var options = {
+        // title: 'Company Performance',
+        // curveType: 'function',
+        legend: {position: 'top', maxLines: 2},
+        interpolateNulls: true,
+        colors,
+        chartArea: {width:'80%'},
+        backgroundColor: '#{process.env.CHART_BACKGROUND_COLOR}',
+        hAxis: {
+          title: hAxis,
+        },
+        vAxis: {
+          title: vAxis,
+        },
+        pointSize: 3,
+      };
+
+      var chart = new google.visualization.LineChart(document.getElementById('chart'));
+      chart.draw(data, options);
+      google.visualization.events.addListener(chart, 'select', function(e) {
+        if(chart.getSelection().length > 0) {
+          var col = chart.getSelection()[0].column
+          var idx = 1
+          for(let station in markerObj) {
+            if(idx == col) {
+              var marker = markerObj[station]
+              // map.setZoom(13)
+              map.panTo(marker.getPosition())
+              break
+            }
+            idx += 1
+          }
+        }
+      });
+    }
+
+    function displayChart(labels, datasets) {
+      var ctx = document.getElementById('chart').getContext('2d');
+      var chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets
+        },
+        options: {
+          plugins: {
+            colorschemes: {
+              scheme: 'office.Solstice6'
+            }
+          },
+          // events: [],
+          responsive: true,
+          maintainAspectRatio: false
+        }
+        // options: {
+        //   scales: {
+        //     yAxes: [{
+        //       ticks: {
+        //         beginAtZero: true
+        //       }
+        //     }]
+        //   },
+        // }
+      });
+    }
+
+    function nextChar(c) {
+      return String.fromCharCode(c.charCodeAt(0) + 1);
+    }
+
+    function getMeasure(stationName, dataTerm) {
+      document.querySelector('#overlay').style['display'] = 'block'
+      return new Promise(function (resolve, reject) {
+        var xhr = new XMLHttpRequest()
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState == xhr.DONE) {
+            if (xhr.status == 200) {
+              var stations = JSON.parse(xhr.responseText)
+              resolve(stations)
+            } else {
+              reject(xhr.responseText)
+            }
+          }
+        }
+        xhr.open('GET', `/measure/${stationName}?dataTerm=${dataTerm}`)
+        xhr.send()
+      })
+    }
+
+    function getNearbyStations(lat, lng) {
+      return new Promise(function(resolve, reject) {
+        var xhr = new XMLHttpRequest()
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState == xhr.DONE) {
+            if (xhr.status == 200) {
+              var stations = JSON.parse(xhr.responseText)
+              resolve(stations)
+            } else {
+              reject(xhr.responseText)
+            }
+          }
+        }
+        xhr.open('GET', `/stations?lat=${lat}&lng=${lng}`)
+        xhr.send()
+      })
+    }
+
+    var curPos
+    navigator.geolocation.getCurrentPosition(function (position) {
+      curPos = {lat: position.coords.latitude, lng: position.coords.longitude}
+    })
+
+    function initAutocomplete() {
+      function sortStationsByDistFrom(fromLoc) {
+        stationList.sort(function (a, b) {
+          var pa = new google.maps.LatLng(a.dmX, a.dmY)
+          var pb = new google.maps.LatLng(b.dmX, b.dmY)
+          var dista = google.maps.geometry.spherical.computeDistanceBetween(pa, fromLoc)
+          var distb = google.maps.geometry.spherical.computeDistanceBetween(pb, fromLoc)
+          return dista - distb
+        })
+      }
+      var prev_marker
+      function markStations(stations, fromLoc) {
+        var marker_icon = {
+          url: `http://maps.google.com/mapfiles/ms/icons/red-dot.png`,
+          // size: new google.maps.Size(71, 71),
+          // origin: new google.maps.Point(0, 0),
+          // anchor: new google.maps.Point(17, 34),
+          scaledSize: new google.maps.Size(40, 40)
+        };
+        var marker_icon_selected = Object.assign({}, marker_icon)
+        marker_icon_selected.url = `http://maps.google.com/mapfiles/kml/paddle/red-circle.png`
+        marker_icon_selected.scaledSize = new google.maps.Size(50, 50)
+
+        stations.forEach(function(station, idx) {
+          if(station.stationName in measureObj) {
+            if(idx == 0) {
+              const infoWindow = infoWindowObj[station.stationName]
+              const marker = markerObj[station.stationName]
+              if (prevInfoWindow)
+                prevInfoWindow.close()
+              infoWindow.open(map, marker);
+              prevInfoWindow = infoWindow
+            }
+            return
+          }
+
+          var location = new google.maps.LatLng(station.dmX, station.dmY)
+          if(fromLoc)
+            var dist = google.maps.geometry.spherical.computeDistanceBetween(location, fromLoc)
+          // Create a marker for each place.
+          var icon = marker_icon
+          var marker = new google.maps.Marker({
+            map: map,
+            icon: icon,
+            title: station.stationName,
+            position: location,
+            // label: `${station.stationName}`
+          })
+          markers.push(marker);
+
+          function highlightMarker() {
+            document.querySelector('#station-photo').src = station.photo
+            document.querySelector('#station-name').innerHTML = `${station.stationName} 측정소`
+            var description =
+                    `<div>거리: ${fromLoc ? (dist / 1000).toFixed(2) : 0}km</div>` +
+                    `<div>주소: ${station.addr}</div>` +
+                    `<div>측정망: ${station.mangName}</div>` +
+                    `<div>측정항목: ${station.item}</div>` +
+                    `<div>설치년도: ${station.year}</div>` +
+                    `<div>관리기관명: ${station.oper}</div>`
+            document.querySelector('#station-description').innerHTML = description
+            document.querySelector('#btn-plot').style['display'] = 'inline'
+            if(prev_marker) {
+              prev_marker.setIcon(marker_icon)
+            }
+            prev_marker = marker
+            marker.setIcon(marker_icon_selected)
+          }
+          var content = document.createElement('div')
+          var h3 = document.createElement('h3')
+          h3.textContent = `${station.stationName} 측정소`
+          content.appendChild(h3)
+          var info
+          if(fromLoc) {
+            info = document.createElement('div')
+            info.textContent = `거리: ${(dist / 1000).toFixed(2)}km`
+            content.appendChild(info)
+          }
+          info = document.createElement('div')
+          info.textContent = `주소: ${station.addr}`
+          content.appendChild(info)
+          info = document.createElement('div')
+          info.textContent = `측정망: ${station.mangName}`
+          content.appendChild(info)
+          info = document.createElement('div')
+          info.textContent = `측정항목: ${station.item}`
+          content.appendChild(info)
+          info = document.createElement('div')
+          info.textContent = `설치년도: ${station.year}`
+          content.appendChild(info)
+          info = document.createElement('div')
+          info.textContent = `관리기관명: ${station.oper}`
+          content.appendChild(info)
+          var button = document.createElement('button')
+          button.textContent = `plot`
+          content.appendChild(button)
+
+          button.onclick = function() {
+            if(this.textContent == 'plot') {
+              if(Object.keys(measureObj).length >= 5) {
+                alert('최대갯수 초과')
+                infoWindow.close()
+                return
+              }
+              locationObj[station.stationName] = location
+              addrObj[station.stationName] = getAddress(station)
+              var that = this
+              plot(`${station.stationName}`)
+              .then(function(done) {
+                if(done) {
+                  markerObj[station.stationName] = marker
+                  var pinned_icon = Object.assign({}, marker_icon)
+                  var color = colorMap[colorObj[station.stationName]]
+                  pinned_icon.url = `http://maps.google.com/mapfiles/kml/pushpin/${color}-pushpin.png`
+                  marker.setIcon(pinned_icon)
+                  markers.splice(markers.indexOf(marker), 1)
+                  that.textContent = 'delete'
+                }
+                infoWindow.close()
+              })
+            }
+            else {
+              delete markerObj[station.stationName]
+              stopPlot(`${station.stationName}`)
+              marker.setMap(null)
+              infoWindow.close()
+            }
+          }
+
+          var contentString = `${station.stationName} 측정소`
+                  '<div id="content">' +
+                  `  <h3>${station.stationName} 측정소</h3>` +
+                  `  <div>거리: ${fromLoc ? (dist / 1000).toFixed(2): 0}km</div>` +
+                  `  <div>주소: ${station.addr}</div>` +
+                  `  <div>측정망: ${station.mangName}</div>` +
+                  `  <div>측정항목: ${station.item}</div>` +
+                  `  <div>설치년도: ${station.year}</div>` +
+                  `  <div>관리기관명: ${station.oper}</div>` +
+                  `  <button onclick="plot('${station.stationName}')">측정값 보기</button>` +
+                  '</div>'
+          var infoWindow = new google.maps.InfoWindow({
+            content
+          });
+          infoWindowObj[station.stationName] = infoWindow
+          // marker.addListener('click', highlightMarker);
+          marker.addListener('click', function() {
+            if(prevInfoWindow)
+              prevInfoWindow.close()
+            infoWindow.open(map, marker);
+            prevInfoWindow = infoWindow
+          });
+          if (idx == 0) {
+            infoWindow.open(map, marker);
+            prevInfoWindow = infoWindow
+            // highlightMarker()
+          }
+        })
+      }
+      function centerControl(controlDiv) {
+        var controlUI = document.createElement('div')
+        controlUI.id = 'center-control-ui'
+        controlDiv.appendChild(controlUI)
+        var controlText = document.createElement('div')
+        controlText.id = 'center-control-text'
+        controlText.innerHTML = '여기에서 측정소 검색'
+        controlUI.appendChild(controlText)
+        controlUI.addEventListener('click', function () {
+          var center = map.getCenter()
+          sortStationsByDistFrom(center)
+          var curStations = []
+          stationList.some(function(station, idx) {
+            var location = new google.maps.LatLng(station.dmX, station.dmY)
+            if(map.getBounds().contains(location)) {
+              curStations.push(station)
+              if(curStations.length >= 15)
+                return true
+            }
+          })
+          // Clear out the old markers.
+          markers.forEach(function (marker) {
+            marker.setMap(null);
+          });
+          markers = [];
+          markStations(curStations)
+        })
+      }
+
+      map = new google.maps.Map(document.getElementById('map'), {
+        center: curPos || {lat: 37.540704, lng: 126.956764},
+        zoom: 13,
+        mapTypeId: 'roadmap'
+      });
+
+      // Create the search box and link it to the UI element.
+      var input = document.getElementById('pac-input');
+      var searchBox = new google.maps.places.SearchBox(input);
+      map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
+
+      // Bias the SearchBox results towards current map's viewport.
+      map.addListener('bounds_changed', function () {
+        searchBox.setBounds(map.getBounds());
+      });
+
+      // create center control
+      var centerControlDiv = document.createElement('div')
+      centerControl(centerControlDiv)
+      // centerControlDiv.index = 1
+      centerControlDiv.style['padding-top'] = '10px';
+      map.controls[google.maps.ControlPosition.TOP_LEFT].push(centerControlDiv)
+
+      var markers = [];
+      var prevInfoWindow
+      // Listen for the event fired when the user selects a prediction and retrieve
+      // more details for that place.
+      searchBox.addListener('places_changed', function () {
+        console.log('places_changed!')
+        var places = searchBox.getPlaces();
+        console.log(places)
+        if (places.length == 0) {
+          return;
+        }
+        // const lat = places[0].geometry.location.lat()
+        // const lng = places[0].geometry.location.lng()
+        // getNearbyStations(lat, lng)
+        // .then(function(stations) {
+        //   console.log(stations)
+        // })
+        // .catch(function(err) {
+        //   console.error(err)
+        // })
+
+        // Clear out the old markers.
+        markers.forEach(function (marker) {
+          marker.setMap(null);
+        });
+        markers = [];
+
+        // For each place, get the icon, name and location.
+        var bounds = new google.maps.LatLngBounds();
+        places.forEach(function (place) {
+          if (!place.geometry) {
+            console.log("Returned place contains no geometry");
+            return;
+          }
+          var icon = {
+            url: place.icon,
+            // size: new google.maps.Size(71, 71),
+            // origin: new google.maps.Point(0, 0),
+            // anchor: new google.maps.Point(17, 34),
+            scaledSize: new google.maps.Size(40, 40)
+          };
+
+          // Create a marker for each place.
+          markers.push(new google.maps.Marker({
+            map: map,
+            icon: icon,
+            title: place.name,
+            position: place.geometry.location
+          }));
+
+          if (place.geometry.viewport) {
+            // Only geocodes have viewport.
+            bounds.union(place.geometry.viewport);
+          } else {
+            bounds.extend(place.geometry.location);
+          }
+        });
+
+        sortStationsByDistFrom(places[0].geometry.location)
+
+        var curStations = []
+        stationList.some(function (station, idx) {
+          var location = new google.maps.LatLng(station.dmX, station.dmY)
+          var dist = google.maps.geometry.spherical.computeDistanceBetween(location, places[0].geometry.location)
+          if (idx >= 3 && dist > 5000)
+            return true
+          curStations.push(station)
+          bounds.extend(location)
+        })
+        markStations(curStations, places[0].geometry.location)
+        map.fitBounds(bounds);
+      });
+    }
+  - api_src = `https://maps.googleapis.com/maps/api/js?key=${process.env.PLACES_API_KEY}&libraries=geometry,places&callback=initAutocomplete`
+  script(async defer src= api_src)
+
+
+  //script.
+  //  var positions = []
+  //for station in stations
+  //  if station.dmX && station.dmY
+  //    script.
+  //      positions.push({
+  //        lat: #{station.dmX},
+  //        lng: #{station.dmY},
+  //        name: '#{station.stationName}',
+  //      })
+  //script.
+  //  function initMap() {
+  //    var center = positions[0] || {lat: 37.540704, lng: 126.956764}
+  //    var map = new google.maps.Map(document.querySelector('#map'), {
+  //      zoom: 14,
+  //      center: center
+  //    })
+  //    positions.forEach(function (pos) {
+  //      new google.maps.Marker({
+  //        position: {lat: pos.lat, lng: pos.lng},
+  //        map: map,
+  //        title: pos.name,
+  //        opacity: 0.5
+  //      })
+  //    })
+  //  }
+  //- api_src = `https://maps.googleapis.com/maps/api/js?key=${process.env.PLACES_API_KEY}&callback=initMap`
+  //script(async defer src= api_src)

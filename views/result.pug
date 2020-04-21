@@ -1,0 +1,32 @@
+extends layout
+
+block content
+    h1= `${query} 검색결과 (${results.length})`
+    #map
+    script.
+        var positions = []
+    for result in results
+        script.
+            positions.push({
+                lat: #{result.geometry.location.lat},
+                lng: #{result.geometry.location.lng},
+                name: '#{result.name}',
+                id: '#{result.place_id}'
+            })
+    script.
+        function initMap() {
+            var center = positions[0] || {lat: 37.540704, lng: 126.956764}
+            var map = new google.maps.Map(document.querySelector('#map'), {
+                zoom: 14,
+                center: center
+            })
+            positions.forEach(function(pos) {
+                var marker = new google.maps.Marker({
+                    position: {lat: pos.lat, lng: pos.lng},
+                    map: map,
+                    title: pos.name,
+                })
+            })
+        }
+    - api_src = `https://maps.googleapis.com/maps/api/js?key=${process.env.PLACES_API_KEY}&callback=initMap`
+    script(async defer src= api_src)
