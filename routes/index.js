@@ -180,11 +180,12 @@ getStations()
       logger.error(err)
     })
 
-
 /* GET home page. */
 router.get('/', async function(req, res, next) {
   try {
-    // var stations = await getStations()
+    if(!station_list) {
+      station_list = await getStations()
+    }
     res.render('index', {
       title: 'Express',
       stations: station_list
