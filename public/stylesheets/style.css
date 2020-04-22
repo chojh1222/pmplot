@@ -16,21 +16,35 @@ a {
 }
 
 #map {
-  float: left;
-  height: 100%;
-  width: 50%;
-}
 
-.clear {
-  clear: both;
 }
 
 #chart-container {
-  float: left;
-  width: 50%;
-  height: 100%;
   background: #f1f8e9;
   position: relative;
+}
+
+@media screen and (orientation:portrait) {
+  #map {
+    height: 50%;
+    width: 100%;
+  }
+  #chart-container {
+    height: 50%;
+    width: 100%;
+  }
+}
+@media screen and (orientation:landscape) {
+  #map {
+    float: left;
+    height: 100%;
+    width: 50%;
+  }
+  #chart-container {
+    float: left;
+    width: 50%;
+    height: 100%;
+  }
 }
 
 #overlay {
