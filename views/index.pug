@@ -676,6 +676,12 @@ block content
       var input = document.getElementById('pac-input');
       var searchBox = new google.maps.places.SearchBox(input);
       map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
+      input.addEventListener("keyup", function (event) {
+        // event.preventDefault();
+        if(event.keyCode == 13) {
+          this.blur()
+        }
+      });
 
       // Bias the SearchBox results towards current map's viewport.
       map.addListener('bounds_changed', function () {
