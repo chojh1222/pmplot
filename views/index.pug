@@ -475,9 +475,9 @@ block content
     }
 
     var curPos
-    navigator.geolocation.getCurrentPosition(function (position) {
-      curPos = {lat: position.coords.latitude, lng: position.coords.longitude}
-    })
+    // navigator.geolocation.getCurrentPosition(function (position) {
+    //   curPos = {lat: position.coords.latitude, lng: position.coords.longitude}
+    // })
 
     function initAutocomplete() {
       function sortStationsByDistFrom(fromLoc) {
@@ -699,22 +699,22 @@ block content
 
         firstChild.addEventListener('click', function () {
           console.log('your location!')
-          var imgX = 0,
-                  animationInterval = setInterval(function () {
-                    imgX = -imgX - 18;
-                    secondChild.style['background-position'] = imgX + 'px 0';
-                  }, 500);
+          // var imgX = 0,
+          //         animationInterval = setInterval(function () {
+          //           imgX = -imgX - 18;
+          //           secondChild.style['background-position'] = imgX + 'px 0';
+          //         }, 500);
 
           if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(function (position) {
               var latlng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
               map.panTo(latlng);
-              clearInterval(animationInterval);
-              secondChild.style['background-position'] = '-144px 0';
+              // clearInterval(animationInterval);
+              // secondChild.style['background-position'] = '-144px 0';
             });
           } else {
-            clearInterval(animationInterval);
-            secondChild.style['background-position'] = '0 0';
+            // clearInterval(animationInterval);
+            // secondChild.style['background-position'] = '0 0';
           }
         });
 
@@ -723,7 +723,7 @@ block content
       }
 
       map = new google.maps.Map(document.getElementById('map'), {
-        center: curPos || {lat: 37.540704, lng: 126.956764},
+        center: curPos || {lat: 37.486592, lng: 126.7892224},
         zoom: 13,
         mapTypeId: 'roadmap'
       });
