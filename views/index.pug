@@ -673,8 +673,8 @@ block content
         firstChild.style.backgroundColor = '#fff';
         firstChild.style.border = 'none';
         firstChild.style.outline = 'none';
-        firstChild.style.width = '28px';
-        firstChild.style.height = '28px';
+        firstChild.style.width = '39px';
+        firstChild.style.height = '39px';
         firstChild.style.borderRadius = '2px';
         firstChild.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
         firstChild.style.cursor = 'pointer';
@@ -683,14 +683,19 @@ block content
         firstChild.title = 'Your Location';
         controlDiv.appendChild(firstChild);
 
-        var secondChild = document.createElement('div');
-        secondChild.style.margin = '5px';
-        secondChild.style.width = '18px';
-        secondChild.style.height = '18px';
-        secondChild.style.backgroundImage = 'url(https://maps.gstatic.com/tactile/mylocation/mylocation-sprite-2x.png)';
-        secondChild.style.backgroundSize = '180px 18px';
-        secondChild.style.backgroundPosition = '0 0';
-        secondChild.style.backgroundRepeat = 'no-repeat';
+        var secondChild = document.createElement('img');
+        secondChild.src = '/images/target.png'
+        secondChild.style.width = '60%';
+        secondChild.style.height = '60%';
+        // var secondChild = document.createElement('div');
+        // secondChild.src = 'https://maps.gstatic.com/tactile/mylocation/mylocation-sprite-2x.png'
+        // secondChild.style.margin = '5px';
+        // secondChild.style.width = '18px';
+        // secondChild.style.height = '18px';
+        // secondChild.style.backgroundImage = 'url(https://maps.gstatic.com/tactile/mylocation/mylocation-sprite-2x.png)';
+        // secondChild.style.backgroundSize = '180px 18px';
+        // secondChild.style.backgroundPosition = '0 0';
+        // secondChild.style.backgroundRepeat = 'no-repeat';
         firstChild.appendChild(secondChild);
 
         google.maps.event.addListener(map, 'center_changed', function () {
@@ -725,7 +730,14 @@ block content
       map = new google.maps.Map(document.getElementById('map'), {
         center: curPos || {lat: 37.486592, lng: 126.7892224},
         zoom: 13,
-        mapTypeId: 'roadmap'
+        mapTypeId: 'roadmap',
+        zoomControl: true,
+        // zoomControlOptions: {
+        //   position: google.maps.ControlPosition.LEFT_BOTTOM
+        // },
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false
       });
 
       // Create the search box and link it to the UI element.
