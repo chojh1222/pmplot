@@ -82,11 +82,20 @@ block content
     var colorUsed = {'#3366cc': false, '#dc3912': false, '#ff9900': false, '#109618': false, '#990099': false}
     var colorMap = {'#3366cc': 'blue', '#dc3912': 'red', '#ff9900': 'ylw', '#109618': 'grn', '#990099': 'purple'}
 
+    var _height
     window.onload = function () {
       const [data, colors] = getChartDataForGoogleChart(measureObj, colorObj)
       displayGoogleChart(data, colors)
+      _height = window.innerHeight
     }
-    window.onresize = function() {
+
+    window.onresize = function(e) {
+      var curHeight = window.innerHeight
+      var input = document.getElementById('pac-input');
+      if(input == document.activeElement && curHeight > _height) {
+        input.blur()
+      }
+      _height = curHeight
       const [data, colors] = getChartDataForGoogleChart(measureObj, colorObj)
       displayGoogleChart(data, colors)
     }
@@ -698,12 +707,11 @@ block content
         // secondChild.style.backgroundRepeat = 'no-repeat';
         firstChild.appendChild(secondChild);
 
-        google.maps.event.addListener(map, 'center_changed', function () {
-          secondChild.style['background-position'] = '0 0';
-        });
+        // google.maps.event.addListener(map, 'center_changed', function () {
+        //   secondChild.style['background-position'] = '0 0';
+        // });
 
         firstChild.addEventListener('click', function () {
-          console.log('your location!')
           // var imgX = 0,
           //         animationInterval = setInterval(function () {
           //           imgX = -imgX - 18;
@@ -714,6 +722,7 @@ block content
             navigator.geolocation.getCurrentPosition(function (position) {
               var latlng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
               map.panTo(latlng);
+
               // clearInterval(animationInterval);
               // secondChild.style['background-position'] = '-144px 0';
             });
